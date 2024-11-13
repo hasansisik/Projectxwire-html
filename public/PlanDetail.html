@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0, user-scalable=yes">
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+        }
+
+        .zoomable-container {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #plan {
+            width: 100%;
+            height: auto;
+            display: block;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        #plan.loaded {
+            opacity: 1;
+        }
+
+        #pinContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .pin,
+        .movable-pin {
+            position: absolute;
+            width: 7px;
+            height: 10px;
+            transform-origin: center;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            will-change: transform, opacity;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .pin:active,
+        .movable-pin:active {
+            transform: scale(1.3);
+            opacity: 0.5;
+            outline: 0;
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 4px solid transparent;
+            border-top: 4px solid #e47017;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="zoomable-container">
+        <div class="loading-spinner" id="loadingSpinner"></div> <!-- Loading Spinner -->
+        <img id="plan" src="" width="1200" height="800" />
+        <div id="pinContainer"></div>
+    </div>
+    <span id="canMarkable" data-markable="false" style="display: none;" />
+    <script>
+        const webViewEventHandler = (event) => {
+            const eventData = JSON.parse(event?.data);
+
+            if (eventData.type === 'pins') handleCreateElements(eventData.message);
+            if (eventData.type === 'mode') handleChangeMode(eventData.message);
+        };
+
+        const handleChangeMode = (data) => {
+            const canMarkableElem = document.getElementById('canMarkable');
+            canMarkableElem.setAttribute("markable", data.isPinActive ? "true" : "false");
+
+            if (!data.isPinActive) document.getElementById('movablePin')?.remove();
+        }
+
+        const handleCreateElements = (data) => {
+            document.getElementById('plan').src = data.image;
+            const pinContainer = document.getElementById('pinContainer');
+
+            if (data?.pinsToDisplay?.length > 0) {
+                data.pinsToDisplay.forEach(pin => {
+                    const existingPin = document.getElementById(`pin-${pin.task._id}`);
+                    if (existingPin) {
+                        // Update existing pin if position changes
+                        existingPin.style.left = `${pin.x - 0.9}%`;
+                        existingPin.style.top = `${pin.y - 3.3}%`;
+                    } else {
+                        // Create new pin
+                        const pinElement = document.createElement('img');
+                        pinElement.src = 'https://firebasestorage.googleapis.com/v0/b/projectxwire-e951a.appspot.com/o/marker.png?alt=media&token=2bfdd297-57cd-42fa-95c4-e1b1ae43944d';
+                        pinElement.className = 'pin';
+                        pinElement.id = `pin-${pin.task._id}`; 
+                        pinElement.style.left = `${pin.x - 0.9}%`;
+                        pinElement.style.top = `${pin.y - 3.3}%`;
+
+                        pinElement.addEventListener('click', () => {
+                            pinElement.style.transform = 'scale(1.3)';
+                            pinElement.style.opacity = '0.5';
+
+                            setTimeout(() => {
+                                pinElement.style.transform = 'scale(1)';
+                                pinElement.style.opacity = '1';
+                            }, 200);
+
+                            handlePostMessage(pin, 'pinPress');
+                        });
+
+                        pinContainer.appendChild(pinElement);
+                    }
+                });
+            }
+        };
+
+        const handlePostMessage = (message, type) => {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ message, type }));
+        }
+
+        const placeOrMoveMovablePin = (xPercent, yPercent) => {
+            const canMarkableElem = document.getElementById('canMarkable');
+            if (canMarkableElem.getAttribute("markable") === "false") return;
+
+            let movablePin = document.getElementById('movablePin');
+            if (!movablePin) {
+                movablePin = document.createElement('img');
+                movablePin.id = 'movablePin';
+                movablePin.src = 'https://firebasestorage.googleapis.com/v0/b/projectxwire-e951a.appspot.com/o/marker.png?alt=media&token=2bfdd297-57cd-42fa-95c4-e1b1ae43944d';
+                movablePin.className = 'movable-pin';
+                document.getElementById('pinContainer').appendChild(movablePin);
+            }
+
+            movablePin.style.left = `${xPercent - 0.8}%`;
+            movablePin.style.top = `${yPercent - 2.2}%`;
+
+            handlePostMessage({ x: xPercent, y: yPercent }, 'pinCreate');
+        };
+
+        document.getElementById('pinContainer').addEventListener('click', (event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const xPercent = ((event.clientX - rect.left) / rect.width) * 100;
+            const yPercent = ((event.clientY - rect.top) / rect.height) * 100;
+            placeOrMoveMovablePin(xPercent, yPercent);
+        });
+
+        // Show image once it has loaded
+        const planImage = document.getElementById('plan');
+        planImage.onload = () => {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            planImage.classList.add('loaded');
+        };
+
+        // Add event listeners
+        window.addEventListener("message", webViewEventHandler);
+        document.addEventListener("message", webViewEventHandler);
+    </script>
+</body>
+
+</html>
