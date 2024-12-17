@@ -124,7 +124,7 @@
                     } else {
                         // Create new pin
                         const pinElement = document.createElement('img');
-                        pinElement.src = 'https://firebasestorage.googleapis.com/v0/b/projectxwire-e951a.appspot.com/o/marker.png?alt=media&token=2bfdd297-57cd-42fa-95c4-e1b1ae43944d'; 
+                        pinElement.src = 'https://firebasestorage.googleapis.com/v0/b/projectxwire-e951a.appspot.com/o/pin.png?alt=media&token=37726a68-2b10-4b10-9ab6-694c1046fec7'; 
                         pinElement.className = 'pin';
                         pinElement.id = `pin-${pin.task._id}`; 
                         pinElement.style.left = `${pin.x - 0.9}%`;
@@ -160,7 +160,7 @@
             if (!movablePin) {
                 movablePin = document.createElement('img');
                 movablePin.id = 'movablePin';
-                movablePin.src = 'https://firebasestorage.googleapis.com/v0/b/projectxwire-e951a.appspot.com/o/marker.png?alt=media&token=2bfdd297-57cd-42fa-95c4-e1b1ae43944d'; 
+                movablePin.src = 'https://firebasestorage.googleapis.com/v0/b/projectxwire-e951a.appspot.com/o/pin.png?alt=media&token=37726a68-2b10-4b10-9ab6-694c1046fec7'; 
                 movablePin.className = 'movable-pin';
                 document.getElementById('pinContainer').appendChild(movablePin);
             }
